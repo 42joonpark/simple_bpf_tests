@@ -1,7 +1,7 @@
 #include "vmlinux.h"
 #include "bpf_helpers.h"
 
-char __license[] SEC("license") = "Dual MIT/GPL";
+char __license[] SEC("license") = "GPL";
 
 struct bpf_map_def SEC("maps") events = {
 	.type        = BPF_MAP_TYPE_ARRAY,
