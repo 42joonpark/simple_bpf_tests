@@ -3,16 +3,16 @@
 
 char __license[] SEC("license") = "GPL";
 
-struct enter_accept4 {
-	u32					_unused1;
-	u32					_unused2;
-	u64					fd;
+struct enter_accept {
+	u64					_unused1;
+	u64					_unused2;
+	int					fd;
 	struct sockaddr*	user_sockaddr;
 	int*				user_addrlen;
 	int					flags;
 };
 
-struct exit_accept4 {
+struct exit_accept {
 	u32	_unused1;
 	u32	_unused2;
 
@@ -23,12 +23,12 @@ struct enter_close {
 	u32	_unused1;
 	u32	_unused2;
 
-	u64	fd;
+	int	fd;
 };
 
 struct all_info {
 	pid_t	pid;
-	u64		fd;
+	int		fd;
 	u64		start_time;
 	u64		end_time;
 };
@@ -36,7 +36,7 @@ struct all_info {
 struct event {
 	pid_t	pid;
 	u32		ret;
-	u64		fd;
+	int		fd;
 	u64		start_time;
 	u64		end_time;
 	u64		duration_ms;
@@ -58,8 +58,8 @@ struct {
 
 const struct event *unused __attribute__((unused));
 
-SEC("tracepoint/sys_enter_accept4")
-int sys_enter_accept4(struct enter_accept4* args)
+SEC("tracepoint/syscalls/sys_enter_accept")
+int sys_enter_accept(struct enter_accept* args)
 {
 	struct all_info	data = {};
 	pid_t			pid = bpf_get_current_pid_tgid() >> 32;
@@ -77,37 +77,45 @@ int sys_enter_accept4(struct enter_accept4* args)
 	return 0;
 }
 
-SEC("tracepoint/sys_exit_accept4")
-int sys_exit_accept4(struct exit_accept4* args)
+SEC("tracepoint/syscalls/sys_exit_accept")
+int sys_exit_accept(struct exit_accept* args)
 {
 	pid_t				pid = bpf_get_current_pid_tgid() >> 32;
 	struct all_info*	tmp = bpf_map_lookup_elem(&time_events, &pid);
+	struct all_info		data = {};
 
-	tmp->start_time = bpf_ktime_get_ns();
-	bpf_map_update_elem(&time_events, &pid, tmp, BPF_ANY);
+	if (tmp == NULL)
+		return 0;
+	data.start_time = bpf_ktime_get_ns();
+	bpf_probe_read(&data.pid, sizeof(data.pid), pid);
+	// bpf_probe_read(&data.fd, sizeof(data.fd), tmp->fd);
+	bpf_map_update_elem(&time_events, &pid, &data, BPF_ANY);
 
 	bpf_printk("222 SysExitAccept4 222");
-	bpf_printk("pid: %d", tmp->pid);
-	bpf_printk("fd: %d", tmp->fd);
-	bpf_printk("start: %ld\n", tmp->start_time);
+	bpf_printk("pid: %d", data.pid);
+	bpf_printk("fd: %d", data.fd);
+	bpf_printk("start: %ld\n", data.start_time);
 	return 0;
 }
 
-SEC("tracepoint/sys_enter_close")
+SEC("tracepoint/syscalls/sys_enter_close")
 int sys_enter_close(struct enter_close* args)
 {
 	pid_t				pid = bpf_get_current_pid_tgid() >> 32;
 	struct all_info*	tmp = bpf_map_lookup_elem(&time_events, &pid);
 	struct event		data = {};
 
-	data.pid = pid;
-	if (tmp->fd == args->fd) {
-		bpf_printk("Both have same fd: %d\n", tmp->fd);
-		bpf_probe_read(&data.fd, sizeof(data.fd), args->fd);
-	} else {
-		bpf_printk("Different fd: %d vs %d\n", tmp->fd, args->fd);
+	if (tmp == NULL)
 		return 0;
-	}
+	data.pid = pid;
+	// if (tmp->fd == args->fd) {
+	// 	bpf_printk("Both have same fd: %d\n", tmp->fd);
+	// 	bpf_probe_read(&data.fd, sizeof(data.fd), args->fd);
+	// } else {
+	// 	bpf_printk("Different fd: %d vs %d\n", tmp->fd, args->fd);
+	// 	return 0;
+	// }
+	bpf_probe_read(&data.fd, sizeof(data.fd), args->fd);
 	data.end_time = bpf_ktime_get_ns();
 	data.duration_ms = data.end_time - data.start_time;
 	bpf_map_update_elem(&events, &data.fd, &data, BPF_ANY);
@@ -122,6 +130,6 @@ int sys_enter_close(struct enter_close* args)
 	bpf_printk("pid: %d", data.pid);
 	bpf_printk("fd: %d", data.fd);
 	bpf_printk("start: %ld", data.start_time);
-	bpf_printk("start: %ld\n", data.end_time);
+	bpf_printk("end: %ld\n", data.end_time);
 	return 0;
 }

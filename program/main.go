@@ -8,6 +8,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -31,17 +32,17 @@ func main() {
 	}
 	defer objs.Close()
 
-	enter_accept4_hook, err := link.Tracepoint("syscalls", "sys_enter_accept4", objs.SysEnterAccept4)
+	enter_accept_hook, err := link.Tracepoint("syscalls", "sys_enter_accept", objs.SysEnterAccept)
 	if err != nil {
 		log.Fatalf("opening tracepoint: %s", err)
 	}
-	defer enter_accept4_hook.Close()
+	defer enter_accept_hook.Close()
 
-	exit_accept4_hook, err := link.Tracepoint("syscalls", "sys_exit_accept4", objs.SysExitAccept4)
+	exit_accept_hook, err := link.Tracepoint("syscalls", "sys_exit_accept", objs.SysExitAccept)
 	if err != nil {
 		log.Fatalf("opening tracepoint: %s", err)
 	}
-	defer exit_accept4_hook.Close()
+	defer exit_accept_hook.Close()
 
 	enter_close_hook, err := link.Tracepoint("syscalls", "sys_enter_close", objs.SysEnterClose)
 	if err != nil {
@@ -55,6 +56,10 @@ func main() {
 	defer ticker.Stop()
 
 	log.Println("Waiting for events..")
+
+	for range ticker.C {
+		fmt.Println("Running....")
+	}
 
 	// const mapKey uint32 = 0
 	// const mapKey2 uint32 = 0
