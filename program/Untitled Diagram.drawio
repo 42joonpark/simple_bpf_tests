@@ -1,14 +1,14 @@
-<mxfile host="app.diagrams.net" modified="2022-04-17T08:29:55.889Z" agent="5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.4 Safari/605.1.15" etag="OcDPJwIvdIKOJtzWfuW9" version="17.4.5" type="github">
+<mxfile host="app.diagrams.net" modified="2022-04-17T08:41:05.131Z" agent="5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.4 Safari/605.1.15" etag="i-GjJdXQpZStES_icp8A" version="17.4.5" type="github">
   <diagram id="bCPXrPhEQwD1uWhgYFIz" name="Page-1">
     <mxGraphModel dx="1181" dy="687" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="6HWFfvK5nsREg1de3G_v-2" value="time 저장 map" style="swimlane;" vertex="1" parent="1">
-          <mxGeometry x="40" y="30" width="190" height="140" as="geometry" />
+          <mxGeometry x="40" y="100" width="190" height="280" as="geometry" />
         </mxCell>
-        <mxCell id="6HWFfvK5nsREg1de3G_v-4" value="얘는 process id를 key값으로&lt;br&gt;시간(us)을&amp;nbsp;value로 저장하는&lt;br&gt;hash map type.&lt;br&gt;exit_accept()에 hooking하고&amp;nbsp;&lt;br&gt;시간 측정. enter_close()에 hooking&lt;br&gt;하고 여기서 시간을 event 구조체에&lt;br&gt;저장 후 map에서 delete." style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="6HWFfvK5nsREg1de3G_v-2">
-          <mxGeometry y="30" width="190" height="100" as="geometry" />
+        <mxCell id="6HWFfvK5nsREg1de3G_v-4" value="얘는 process id를 key값으로&lt;br&gt;시간(us)을&amp;nbsp;value로 저장하는&lt;br&gt;hash map type.&lt;br&gt;exit_accept()에 hooking하고&amp;nbsp;&lt;br&gt;시간 측정. enter_close()에 hooking&lt;br&gt;하고 여기서 시간을 event 구조체에&lt;br&gt;저장 후 map에서 delete.&lt;br&gt;이 계획이었는데... 초반에 필요한&lt;br&gt;모든 정보를 다 저장해둬야해.&lt;br&gt;그러면 새로운 구조체가 필요하지.&lt;br&gt;그 구조체 이름은 ... all_info?" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="6HWFfvK5nsREg1de3G_v-2">
+          <mxGeometry y="60" width="190" height="160" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
