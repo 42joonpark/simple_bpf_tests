@@ -3,6 +3,13 @@
 
 char __license[] SEC("license") = "GPL";
 
+struct enter_accept4 {
+	int					fd;
+	struct sockaddr*	user_sockaddr;
+	int*				user_addrlen;
+	int					flags;
+};
+
 struct exit_accept4 {
 	u64	_unused1;
 	u64	_unused2;
@@ -17,57 +24,86 @@ struct enter_close {
 	u64	fd;
 };
 
+struct all_info {
+	pid_t	pid;
+	int		fd;
+	u64		start_time;
+	u64		end_time;
+};
+
 struct event {
 	pid_t	pid;
 	u32		ret;
 	int		fd;
+	u64		start_time;
+	u64		end_time;
 	u64		duration_ms;
 };
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, int);
-	__type(value, struct event);
+	__type(value, struct all_info);
 	__uint(max_entries, 10);
 } time_events SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct event);
+	__uint(max_entries, 10);
+} events SEC(".maps");
+
 const struct event *unused __attribute__((unused));
 
-SEC("tracepoint/sys_exit_accept4")
-int __sys_exit_accept4(struct exit_accept4* args)
+SEC("tracepoint/sys_enter_accept4")
+int sys_enter_accept4(struct enter_accept4* args)
 {
-	struct event info = {};
+	struct all_info	data = {};
+	pid_t			pid = bpf_get_current_pid_tgid() >> 32;
+
+	data.pid = pid;
+	bpf_probe_read(&data.fd, sizeof(data.fd), args->fd);
+	data.start_time = bpf_ktime_get_ns();
+
+	bpf_map_update_elem(&time_events, &pid, &data, BPF_ANY);
 	return 0;
 }
 
-SEC("tracepoint/tcp_retransmit_skb")
-int tcp_probe(struct tcp_entry* args) {
-	// struct event info = {};
-	struct event *valp;
-	u32 key = 0;
+SEC("tracepoint/sys_exit_accept4")
+int sys_exit_accept4(struct exit_accept4* args)
+{
+	pid_t				pid = bpf_get_current_pid_tgid() >> 32;
+	struct all_info*	tmp = bpf_map_lookup_elem(&time_events, &pid);
 
-	bpf_probe_read(&info.saddr, sizeof(info.saddr), &args->saddr);
-	bpf_probe_read(&info.daddr, sizeof(info.daddr), &args->daddr);
-	bpf_probe_read(&info.sport, sizeof(info.sport), &args->sport);
-	bpf_probe_read(&info.dport, sizeof(info.dport), &args->dport);
-
-	valp = bpf_map_lookup_elem(&events, &key);
-	bpf_map_update_elem(&events, &key, &info, BPF_ANY);
-
+	tmp->start_time = bpf_ktime_get_ns();
+	bpf_map_update_elem(&time_events, &pid, tmp, BPF_ANY);
 	return 0;
 }
 
-SEC("tracepoint/sys_enter_execve")
-int kprobe_execve() {
-	u32 key     = 0;
-	u64 initval = 1, *valp;
+SEC("tracepoint/sys_enter_close")
+int sys_enter_close(struct enter_close* args)
+{
+	pid_t				pid = bpf_get_current_pid_tgid() >> 32;
+	struct all_info*	tmp = bpf_map_lookup_elem(&time_events, &pid);
+	struct event		data = {};
 
-	valp = bpf_map_lookup_elem(&kprobe_map, &key);
-	if (!valp) {
-		bpf_map_update_elem(&kprobe_map, &key, &initval, BPF_ANY);
+	data.pid = pid;
+	if (tmp->fd == args->fd) {
+		bpf_printk("Both have same fd: %d\n", tmp->fd);
+		bpf_probe_read(&data.fd, sizeof(data.fd), args->fd);
+	} else {
+		bpf_printk("Different fd: %d vs %d\n", tmp->fd, args->fd);
 		return 0;
 	}
-	__sync_fetch_and_add(valp, 1);
+	data.end_time = bpf_ktime_get_ns();
+	data.duration_ms = data.end_time - data.start_time;
+	bpf_map_update_elem(&events, &data.fd, &data, BPF_ANY);
+
+	// 문제는... main.go에서는 fd값을 모르는데 어떻게 events map에서 데이터를 가져오냐 이거야.
+	// 일단 지금 생각해본 방법은 enter_execve4에서 fd를 구하니까 이것만 저장하는 map을 또 만들고
+	// main.go에서는 여기서 fd값을 얻어서 이 값으로 events map에 접근한다.
+	bpf_map_delete_elem(&events, &pid);
 
 	return 0;
 }
