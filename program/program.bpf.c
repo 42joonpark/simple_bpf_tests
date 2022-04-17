@@ -3,7 +3,7 @@
 
 char __license[] SEC("license") = "GPL";
 
-struct enter_accept {
+struct enter_accept4 {
 	u64					_unused1;
 	u64					_unused2;
 	int					fd;
@@ -12,7 +12,7 @@ struct enter_accept {
 	int					flags;
 };
 
-struct exit_accept {
+struct exit_accept4 {
 	u32	_unused1;
 	u32	_unused2;
 
@@ -29,6 +29,7 @@ struct enter_close {
 struct all_info {
 	pid_t	pid;
 	int		fd;
+	int		ret;
 	u64		start_time;
 	u64		end_time;
 };
@@ -58,14 +59,14 @@ struct {
 
 const struct event *unused __attribute__((unused));
 
-SEC("tracepoint/syscalls/sys_enter_accept")
-int sys_enter_accept(struct enter_accept* args)
+SEC("tracepoint/syscalls/sys_enter_accept4")
+int sys_enter_accept4(struct enter_accept4* args)
 {
 	struct all_info	data = {};
 	pid_t			pid = bpf_get_current_pid_tgid() >> 32;
 
 	data.pid = pid;
-	bpf_probe_read(&data.fd, sizeof(data.fd), args->fd);
+	bpf_probe_read(&data.fd, sizeof(data.fd), &args->fd);
 	data.start_time = bpf_ktime_get_ns();
 
 	bpf_map_update_elem(&time_events, &pid, &data, BPF_ANY);
@@ -77,23 +78,25 @@ int sys_enter_accept(struct enter_accept* args)
 	return 0;
 }
 
-SEC("tracepoint/syscalls/sys_exit_accept")
-int sys_exit_accept(struct exit_accept* args)
+SEC("tracepoint/syscalls/sys_exit_accept4")
+int sys_exit_accept4(struct exit_accept4* args)
 {
 	pid_t				pid = bpf_get_current_pid_tgid() >> 32;
 	struct all_info*	tmp = bpf_map_lookup_elem(&time_events, &pid);
 	struct all_info		data = {};
 
-	if (tmp == NULL)
+	if (tmp == NULL) // map에 해당하는 것이 없으면 바로 종료
 		return 0;
 	data.start_time = bpf_ktime_get_ns();
-	bpf_probe_read(&data.pid, sizeof(data.pid), pid);
+	bpf_probe_read(&data.pid, sizeof(data.pid), &pid);
+	bpf_probe_read(&data.ret, sizeof(data.ret), &args->ret);
 	// bpf_probe_read(&data.fd, sizeof(data.fd), tmp->fd);
 	bpf_map_update_elem(&time_events, &pid, &data, BPF_ANY);
 
 	bpf_printk("222 SysExitAccept4 222");
 	bpf_printk("pid: %d", data.pid);
 	bpf_printk("fd: %d", data.fd);
+	bpf_printk("ret: %d", args->ret);
 	bpf_printk("start: %ld\n", data.start_time);
 	return 0;
 }

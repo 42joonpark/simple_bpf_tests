@@ -32,13 +32,13 @@ func main() {
 	}
 	defer objs.Close()
 
-	enter_accept_hook, err := link.Tracepoint("syscalls", "sys_enter_accept", objs.SysEnterAccept)
+	enter_accept_hook, err := link.Tracepoint("syscalls", "sys_enter_accept4", objs.SysEnterAccept4)
 	if err != nil {
 		log.Fatalf("opening tracepoint: %s", err)
 	}
 	defer enter_accept_hook.Close()
 
-	exit_accept_hook, err := link.Tracepoint("syscalls", "sys_exit_accept", objs.SysExitAccept)
+	exit_accept_hook, err := link.Tracepoint("syscalls", "sys_exit_accept4", objs.SysExitAccept4)
 	if err != nil {
 		log.Fatalf("opening tracepoint: %s", err)
 	}
