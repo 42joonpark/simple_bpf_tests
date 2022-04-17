@@ -6,8 +6,11 @@ PROGRAM = program
 
 all: 
 
-program: clean vmlinux.h bpf_helpers.h generate
+program: compiler clean vmlinux.h bpf_helpers.h generate
 	go build -o $(PROGRAM) main.go bpf_bpfel.go
+
+compiler:
+	export BPF_CLANG=$(CLANG)
 
 generate:
 	go generate

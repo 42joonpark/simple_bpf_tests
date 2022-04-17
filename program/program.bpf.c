@@ -4,29 +4,31 @@
 char __license[] SEC("license") = "GPL";
 
 struct enter_accept4 {
-	int					fd;
+	u32					_unused1;
+	u32					_unused2;
+	u64					fd;
 	struct sockaddr*	user_sockaddr;
 	int*				user_addrlen;
 	int					flags;
 };
 
 struct exit_accept4 {
-	u64	_unused1;
-	u64	_unused2;
+	u32	_unused1;
+	u32	_unused2;
 
 	u32	ret;
 };
 
 struct enter_close {
-	u64	_unused1;
-	u64	_unused2;
+	u32	_unused1;
+	u32	_unused2;
 
 	u64	fd;
 };
 
 struct all_info {
 	pid_t	pid;
-	int		fd;
+	u64		fd;
 	u64		start_time;
 	u64		end_time;
 };
@@ -34,7 +36,7 @@ struct all_info {
 struct event {
 	pid_t	pid;
 	u32		ret;
-	int		fd;
+	u64		fd;
 	u64		start_time;
 	u64		end_time;
 	u64		duration_ms;
@@ -67,6 +69,11 @@ int sys_enter_accept4(struct enter_accept4* args)
 	data.start_time = bpf_ktime_get_ns();
 
 	bpf_map_update_elem(&time_events, &pid, &data, BPF_ANY);
+
+	bpf_printk("111 SysEnterAccept4 111");
+	bpf_printk("pid: %d", data.pid);
+	bpf_printk("fd: %d", data.fd);
+	bpf_printk("start: %ld\n", data.start_time);
 	return 0;
 }
 
@@ -78,6 +85,11 @@ int sys_exit_accept4(struct exit_accept4* args)
 
 	tmp->start_time = bpf_ktime_get_ns();
 	bpf_map_update_elem(&time_events, &pid, tmp, BPF_ANY);
+
+	bpf_printk("222 SysExitAccept4 222");
+	bpf_printk("pid: %d", tmp->pid);
+	bpf_printk("fd: %d", tmp->fd);
+	bpf_printk("start: %ld\n", tmp->start_time);
 	return 0;
 }
 
@@ -105,5 +117,11 @@ int sys_enter_close(struct enter_close* args)
 	// main.go에서는 여기서 fd값을 얻어서 이 값으로 events map에 접근한다.
 	bpf_map_delete_elem(&events, &pid);
 
+
+	bpf_printk("333 SysEnterClose 333");
+	bpf_printk("pid: %d", data.pid);
+	bpf_printk("fd: %d", data.fd);
+	bpf_printk("start: %ld", data.start_time);
+	bpf_printk("start: %ld\n", data.end_time);
 	return 0;
 }
